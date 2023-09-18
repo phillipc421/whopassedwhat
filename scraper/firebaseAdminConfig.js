@@ -1,3 +1,6 @@
-import { initializeApp } from "firebase-admin/app";
+import { initializeApp, applicationDefault } from "firebase-admin/app";
 
-const app = initializeApp();
+export const app = initializeApp({
+  credential: applicationDefault(),
+  databaseURL: "https://whopassedwhat-default-rtdb.firebaseio.com",
+});
