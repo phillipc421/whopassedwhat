@@ -1,6 +1,10 @@
 {
   "type": "module",
   "dependencies": {
+    "firebase-admin": "^11.10.1",
     "puppeteer": "^21.2.1"
+  },
+  "scripts": {
+    "dev": "GOOGLE_APPLICATION_CREDENTIALS=../whopassedwhat-firebase-adminsdk-v7qpa-90abf2830e.json"
   }
 }
