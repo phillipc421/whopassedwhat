@@ -20,7 +20,7 @@ export default function CongressSelector() {
       <select id={formKey} name={formKey}>
         {CONGRESSES.map((congress) => (
           <option key={congress.name} value={congress.name}>
-            {congress.name} Congress, {congress.years}
+            {congress.name} Congress, {congress.start} - {congress.end}
           </option>
         ))}
       </select>

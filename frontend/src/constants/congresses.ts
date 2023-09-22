@@ -147,4 +147,12 @@ export const CONGRESSES = [
     name: "82nd",
     years: "(1951-1952)",
   },
-];
+].map((congress) => {
+  const [start, end] = congress.years
+    .slice(1, congress.years.length - 1)
+    .split("-");
+
+  const congressStart = parseInt(start);
+  const congressEnd = parseInt(end);
+  return { name: congress.name, start: congressStart, end: congressEnd };
+});

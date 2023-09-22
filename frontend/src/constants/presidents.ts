@@ -1,4 +1,4 @@
-const PRESIDENTS = [
+export const PRESIDENTS = [
   {
     name: "GEORGE WASHINGTON",
     term: "1789-1797",
@@ -84,12 +84,16 @@ const PRESIDENTS = [
     term: "1881-1885",
   },
   {
-    name: "GROVER CLEVELAND",
-    term: "1885-1889 / 1893-1897",
+    name: "GROVER CLEVELAND (1st)",
+    term: "1885-1889",
   },
   {
     name: "BENJAMIN HARRISON",
     term: "1889-1893",
+  },
+  {
+    name: "GROVER CLEVELAND (2nd)",
+    term: "1893-1897",
   },
   {
     name: "WILLIAM MCKINLEY",
@@ -179,4 +183,8 @@ const PRESIDENTS = [
     name: "JOSEPH R. BIDEN JR.",
     term: "2021-",
   },
-];
+].map((president) => {
+  const { name, term } = president;
+  const [start, end] = term.split("-");
+  return { name, start, end };
+});
