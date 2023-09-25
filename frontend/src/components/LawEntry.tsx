@@ -12,7 +12,8 @@ export default function LawEntry({ law }: { law: LawsEntry }) {
             <Link href={bill.link}>{bill.title.slice(2)}</Link>
           </h3>
           <p>
-            Number: {bill.number} | Date: <time dateTime={date}>{date}</time>
+            Bill Number: {bill.number} | Date:{" "}
+            <time dateTime={date}>{date}</time>
           </p>
         </header>
         <LawLinks lawLinks={lawInfo}></LawLinks>

@@ -30,7 +30,7 @@ export default function LawsPassed({ president }: { president: string }) {
     selected && (
       <section className={styles["container"]}>
         <ScrollTop></ScrollTop>
-        <h1>Laws Signed by {president}.</h1>
+        <h1>Laws Passed During {president}'s Administration</h1>
         <CongressesTab
           congresses={laws}
           setCurrentCongress={setCurrentCongress}
