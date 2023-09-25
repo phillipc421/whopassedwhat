@@ -1,6 +1,6 @@
 "use client";
 import { getLaws } from "@/fetchers";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { LawsReponse, LawsState } from "@/fetchers";
 import { PRESIDENTS_CONGRESS } from "@/constants/presidentCongress";
 import Link from "next/link";
@@ -20,8 +20,7 @@ export default function LawsPassed({ president }: { president: string }) {
     Promise.all(lawRequests)
       .then((response) => setLaws(response))
       .catch((e) => console.log(e));
-  }, []);
-  console.log(laws);
+  }, [congresses.congresses]);
 
   const selected = laws ? laws[currentCongress] : null;
 
@@ -30,7 +29,7 @@ export default function LawsPassed({ president }: { president: string }) {
     selected && (
       <section className={styles["container"]}>
         <ScrollTop></ScrollTop>
-        <h1>Laws Passed During {president}'s Administration</h1>
+        <h1>Laws Passed During {president}&apos;s Administration</h1>
         <CongressesTab
           congresses={laws}
           setCurrentCongress={setCurrentCongress}

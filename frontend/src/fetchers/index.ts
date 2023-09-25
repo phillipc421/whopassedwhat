@@ -31,6 +31,5 @@ export async function getLaws(congress: string): Promise<LawsState> {
     `https://whopassedwhat-default-rtdb.firebaseio.com/laws/${congress}-congress.json`
   );
   const data = (await response.json()) as LawsReponse;
-  console.log(data);
   return { ...data, congress };
 }

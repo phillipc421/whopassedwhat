@@ -11,14 +11,14 @@ export default function HomePage() {
       <ol>
         <li>Select a presidential administration from the dropdown above.</li>
         <li>
-          View all the bills that became law during that president's
+          View all the bills that became law during that president&apos;s
           administration, sorted by congress.
         </li>
       </ol>
       <h2>Caveats</h2>
       <p>
-        While all the laws shown were passed during said president's term, it is
-        technically inaccurate to say that all of them were passed by that{" "}
+        While all the laws shown were passed during said president&apos;s term,
+        it is technically inaccurate to say that all of them were passed by that{" "}
         <em>president</em>. There are instances, although uncommon, in which the
         president vetoed a bill and it was then overriden by congress. Please
         confirm by following the links to the bills in question to determine
@@ -28,10 +28,10 @@ export default function HomePage() {
       <p>
         There are no official digital records on{" "}
         <Link href="https://www.congress.gov/" target="_blank">
-          congress’s
+          congress&apos;s
         </Link>{" "}
-        website for congresses prior to the 82nd. Therefore, I've limited the
-        choice of administrations to those that began on or after the 82nd
+        website for congresses prior to the 82nd. Therefore, I&apos;ve limited
+        the choice of administrations to those that began on or after the 82nd
         congress (Harry S. Truman).
       </p>
     </main>
