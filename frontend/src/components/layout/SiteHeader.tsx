@@ -5,7 +5,7 @@ export default function SiteHeader() {
   return (
     <header>
       <div className={styles["logo"]}>
-        <Link href="/">WhoPassedWhat?</Link>
+        <Link href="/">WhoPassedWhat? 🇺🇸</Link>
       </div>
       <PresidentSelector></PresidentSelector>
     </header>
