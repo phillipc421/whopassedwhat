@@ -131,7 +131,7 @@ const scrape = async () => {
   // create link format - starting format: number 'congress' daterange
   const links = options.map((option) => `${option.split(" ")[0]}-congress`);
 
-  for (let i = 0; i < 7; i += 5) {
+  for (let i = 0; i < links.length; i += 5) {
     await batchRun(5, i, links, browser, db);
     console.log(
       "batch done",
