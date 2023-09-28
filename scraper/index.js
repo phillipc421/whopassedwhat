@@ -1,6 +1,7 @@
 import puppeteer from "puppeteer";
 import { app } from "./firebaseAdminConfig.js";
 import { getDatabase } from "firebase-admin/database";
+import { linkPresident } from "./presidents.js";
 
 // will default to current congress
 const LAWS_URL = "https://www.congress.gov/public-laws/";
@@ -10,7 +11,7 @@ const CONGRESSES_SELECTOR = "#congresses > option";
 const db = getDatabase(app);
 
 // scrape current page (latest congress)
-const pageScrape = async (browser, congressUrl) => {
+const pageScrape = async (browser, congressUrl, congress) => {
   const page = await browser.newPage();
   await page.goto(congressUrl);
   console.log("page opened", congressUrl);
@@ -20,37 +21,52 @@ const pageScrape = async (browser, congressUrl) => {
   // start at index 1, skip header row
   for (let i = 1; i < tableRows.length; i++) {
     const currentRow = tableRows[i];
-    const lawData = await currentRow.$$eval("td", (columns) => {
-      const isOlderTable = columns.length === 4;
-      const law = {};
-      // first column always the same (law number)
-      const lawNumberColumn = columns[0];
-      for (let i = 0; i < lawNumberColumn.children.length; i++) {
-        const child = lawNumberColumn.children[i];
-        law.law = { ...law.law, [child.innerText]: child.href };
-      }
+    try {
+      const lawData = await currentRow.$$eval(
+        "td",
+        (columns, congress) => {
+          const isOlderTable = columns.length === 4;
+          const law = {};
+          // first column always the same (law number)
 
-      // account for older tables - older congresses have a "statutes at large" column
-      let index = isOlderTable ? 2 : 1;
+          const lawNumberColumn = columns[0];
+          const lawNumberNode =
+            lawNumberColumn.children.length !== 0
+              ? lawNumberColumn.children[0]
+              : lawNumberColumn.innerText;
+          law.publicLawNumber = lawNumberNode.innerText;
+          law.textLink = lawNumberNode.href || null;
 
-      const billNumberColumn = columns[index];
-      const billNumberNodes = billNumberColumn.childNodes;
-      const billLink = billNumberNodes[0];
-      const billTitle = billNumberNodes[1];
-      law.bill = {
-        number: billLink.innerText,
-        link: billLink.href,
-        title: billTitle.textContent,
-      };
+          // account for older tables - older congresses have a "statutes at large" column
+          let index = isOlderTable ? 2 : 1;
 
-      index += 1;
+          const billNumberColumn = columns[index];
+          const billNumberNodes = billNumberColumn.childNodes;
+          const billLink = billNumberNodes[0];
+          const billTitle = billNumberNodes[1];
 
-      const dateColumn = columns[index];
-      law.date = dateColumn.innerText;
+          law.billNumber = billLink.innerText;
+          law.billLink = billLink.href || null;
+          law.billTitle = billTitle.textContent;
 
-      return law;
-    });
-    laws.push(lawData);
+          index += 1;
+
+          const dateColumn = columns[index];
+          const date = dateColumn.innerText;
+          law.passedDate = date;
+
+          law.congress = congress;
+
+          return law;
+        },
+        congress
+      );
+      lawData.president = linkPresident(lawData.passedDate);
+
+      laws.push(lawData);
+    } catch (e) {
+      console.log(e);
+    }
   }
   await page.close();
   console.log("Page closed", congressUrl);
@@ -59,25 +75,34 @@ const pageScrape = async (browser, congressUrl) => {
 
 const saveToDb = (data, db) => {
   // laws ref
-  const congressRef = db.ref(`laws/${data.congress}`);
-  const totalRef = congressRef.child("total");
-  totalRef.set(data.data.total);
-  const lawsRef = congressRef.child("laws");
-  data.data.laws.forEach((law) => {
+  const lawsRef = db.ref(`v2/laws`);
+  data.forEach((law) => {
+    // president ref
+    const presidentRef = db.ref(`v2/presidents/${law.president}`);
+    const newLawPresidentRef = presidentRef.push();
+    const presidentId = newLawPresidentRef.key;
+    newLawPresidentRef.set({ ...law, id: presidentId });
+    // congress ref
+    const congressRef = db.ref(`v2/congresses/${law.congress}`);
+    const newLawCongressesRef = congressRef.push();
+    const congressId = newLawCongressesRef.key;
+    newLawCongressesRef.set({ ...law, id: congressId });
+
     const newLawRef = lawsRef.push();
-    const id = newLawRef.key;
-    newLawRef.set({ ...law, id });
+    const lawId = newLawRef.key;
+    newLawRef.set({ ...law, id: lawId });
   });
 };
 
 const scrapeAndWriteDb = async (link, browser, db) => {
-  const lawData = await pageScrape(browser, LAWS_URL + link);
+  // link format -> 118th-congress
+  const lawData = await pageScrape(
+    browser,
+    LAWS_URL + link,
+    link.split("-")[0]
+  );
   // rework to have law title and bill title at root level
-  const dbData = {
-    congress: link,
-    data: { laws: lawData, total: lawData.length },
-  };
-  saveToDb(dbData, db);
+  saveToDb(lawData, db);
 };
 
 const batchRun = async (batchSize, startIndex, links, browser, db) => {
@@ -106,7 +131,7 @@ const scrape = async () => {
   // create link format - starting format: number 'congress' daterange
   const links = options.map((option) => `${option.split(" ")[0]}-congress`);
 
-  for (let i = 0; i < links.length; i += 5) {
+  for (let i = 0; i < 7; i += 5) {
     await batchRun(5, i, links, browser, db);
     console.log(
       "batch done",
