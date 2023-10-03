@@ -13,7 +13,7 @@ export default function PresidentSelector() {
     const formData = new FormData(e.currentTarget);
     const president = formData.get(formKey);
     if (!president) return;
-    router.push(`/${encodeURIComponent(president.toString())}`);
+    router.push(`/president/${encodeURIComponent(president.toString())}`);
   };
 
   return (
@@ -21,7 +21,7 @@ export default function PresidentSelector() {
       <label htmlFor={formKey}>President:</label>
       <select id={formKey} name={formKey}>
         {PRESIDENTS.map((president) => (
-          <option key={president.name} value={president.name}>
+          <option key={president.slug} value={president.slug}>
             {president.name}, {president.start} - {president.end}
           </option>
         ))}

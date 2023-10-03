@@ -10,6 +10,8 @@ const CONGRESSES_SELECTOR = "#congresses > option";
 // init db
 const db = getDatabase(app);
 
+const DB_VERSION_PREFIX = "v3"
+
 // scrape current page (latest congress)
 const pageScrape = async (browser, congressUrl, congress) => {
   const page = await browser.newPage();
@@ -52,8 +54,11 @@ const pageScrape = async (browser, congressUrl, congress) => {
           index += 1;
 
           const dateColumn = columns[index];
-          const date = dateColumn.innerText;
-          law.passedDate = date;
+          // date format on site = mm/dd/yyyy -> convert to yyyy-mm-dd
+          const dateValues = dateColumn.innerText.split("/").map(v => parseInt(v));
+          const [year, month, day] = dateValues;
+          const dateObj = new Date(year, month - 1, day);
+          law.passedDate = dateObj.toISOString();
 
           law.congress = congress;
 
@@ -75,15 +80,15 @@ const pageScrape = async (browser, congressUrl, congress) => {
 
 const saveToDb = (data, db) => {
   // laws ref
-  const lawsRef = db.ref(`v2/laws`);
+  const lawsRef = db.ref(`${DB_VERSION_PREFIX}/laws`);
   data.forEach((law) => {
     // president ref
-    const presidentRef = db.ref(`v2/presidents/${law.president}`);
+    const presidentRef = db.ref(`${DB_VERSION_PREFIX}/presidents/${law.president}`);
     const newLawPresidentRef = presidentRef.push();
     const presidentId = newLawPresidentRef.key;
     newLawPresidentRef.set({ ...law, id: presidentId });
     // congress ref
-    const congressRef = db.ref(`v2/congresses/${law.congress}`);
+    const congressRef = db.ref(`${DB_VERSION_PREFIX}/congresses/${law.congress}`);
     const newLawCongressesRef = congressRef.push();
     const congressId = newLawCongressesRef.key;
     newLawCongressesRef.set({ ...law, id: congressId });

@@ -58,7 +58,11 @@ export const PRESIDENTS = [
 ].map((president) => {
   const { name, term } = president;
   const [start, end] = term.split("-");
-  return { name, start, end };
+  const slug = name
+    .toLocaleLowerCase()
+    .replaceAll(".", "")
+    .replaceAll(" ", "-");
+  return { name, slug, start, end };
 });
 
 const PRIOR_TO_CONGRESS_RECORDS = [
