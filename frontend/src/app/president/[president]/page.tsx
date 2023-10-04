@@ -22,7 +22,7 @@ export default async function PresidentPage({
           .split("-")
           .map((word) => word[0].toUpperCase() + word.slice(1))
           .join(" ")}
-        's Administration. ({lawsData.total})
+        &apos;s Administration. ({lawsData.total})
       </h1>
       <LawsPassed
         president={decodeURIComponent(params.president)}
