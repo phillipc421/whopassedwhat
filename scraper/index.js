@@ -6,7 +6,6 @@ import { linkPresident } from "./presidents.js";
 // will default to current congress
 const LAWS_URL = "https://www.congress.gov/public-laws/";
 const CONGRESSES_SELECTOR = "#congresses > option";
-import { PRESIDENTS } from "./presidents.js";
 
 // init db
 const db = getDatabase(app);
@@ -59,7 +58,7 @@ const pageScrape = async (browser, congressUrl, congress) => {
           const dateValues = dateColumn.innerText
             .split("/")
             .map((v) => parseInt(v));
-          const [year, month, day] = dateValues;
+          const [month, day, year] = dateValues;
           const dateObj = new Date(year, month - 1, day);
           law.passedDate = dateObj.toISOString();
 
@@ -86,45 +85,59 @@ const pageScrape = async (browser, congressUrl, congress) => {
 const saveToDb = (data, db) => {
   // laws ref
   const lawsRef = db.ref(`${DB_VERSION_PREFIX}/laws`);
+  const lawsRefTotalsRef = lawsRef.child("total");
   data.forEach((law) => {
+    // law entry
+    const lawYearRef = lawsRef.child(law.passedDate.split("-")[0]);
+    const lawYearLawsRef = lawYearRef.child("laws");
+    const lawYearTotalsRef = lawYearRef.child("total");
+    const newLawRef = lawYearLawsRef.push();
+    const lawId = newLawRef.key;
+    const lawObj = { ...law, id: lawId };
+    lawYearTotalsRef.transaction((currentValue) => {
+      return (currentValue || 0) + 1;
+    });
+    lawsRefTotalsRef.transaction((currentValue) => {
+      return (currentValue || 0) + 1;
+    });
+    newLawRef.set(lawObj);
+
     // president ref
     const presidentRef = db.ref(
-      `${DB_VERSION_PREFIX}/presidents/${law.president}`
+      `${DB_VERSION_PREFIX}/presidents/${law.president.slug}`
     );
-    const newLawPresidentRef = presidentRef.push();
-    const presidentId = newLawPresidentRef.key;
-    newLawPresidentRef.set({ ...law, id: presidentId });
+    const presidentRefLawsRef = presidentRef.child(`laws/${lawId}`);
+    const presidentRefTotalsRef = presidentRef.child("total");
+    presidentRefLawsRef.set({ ...law, id: lawId });
+    presidentRefTotalsRef.transaction((currentValue) => {
+      return (currentValue || 0) + 1;
+    });
+
     // congress ref
     const congressRef = db.ref(
       `${DB_VERSION_PREFIX}/congresses/${law.congress}`
     );
-    const newLawCongressesRef = congressRef.push();
-    const congressId = newLawCongressesRef.key;
-    newLawCongressesRef.set({ ...law, id: congressId });
+    const congressRefLawsRef = congressRef.child(`laws/${lawId}`);
+    const congressRefTotalsRef = congressRef.child("total");
+    congressRefLawsRef.set({ ...law, id: lawId });
+    congressRefTotalsRef.transaction((currentValue) => {
+      return (currentValue || 0) + 1;
+    });
 
-    const newLawRef = lawsRef.push();
-    const lawId = newLawRef.key;
-    const lawObj = { ...law, id: lawId };
-    newLawRef.set(lawObj);
-
-    const newPresRef = presidentRef.child(`${law.president.slug}/${lawId}`);
-    newPresRef.set(lawObj);
-
-    const newCongressRef = congressRef.child(`${law.congress}/${lawId}`);
-    newCongressRef.set(lawObj);
+    // can we get a total during write?
   });
 };
 
 const scrapeAndWriteDb = async (link, browser, db) => {
   // link format -> 118th-congress
   try {
-    const lawData = await pageScrape(
+    const lawDataPerCongress = await pageScrape(
       browser,
       LAWS_URL + link,
       link.split("-")[0]
     );
     // rework to have law title and bill title at root level
-    saveToDb(lawData, db);
+    saveToDb(lawDataPerCongress, db);
   } catch (e) {
     console.log("caught here", e);
   }
@@ -174,35 +187,3 @@ const scrape = async () => {
 };
 
 scrape();
-
-const testRefs = () => {
-  const ass = [
-    "ass",
-    "butt",
-    "ass",
-    "phillip",
-    "phillip",
-    "ass",
-    "booty",
-    "pipe",
-    "ass",
-    "claire",
-  ];
-  // const presidentRef = db.ref("v2/presidents");
-  for (let i = 0; i < 10; i++) {
-    const yeetRef = presidentRef.child(ass[i]);
-    const yeetrefA = yeetRef.push();
-    const yeetrefid = yeetrefA.key;
-    yeetrefA.set({ val: "hi" });
-  }
-};
-
-// testRefs();
-// testRefs();
-// testRefs();
-
-// console.log(PRESIDENTS[PRESIDENTS.length - 1]);
-
-// PRESIDENTS.forEach((pres) => {
-//   console.log(pres);
-// });
