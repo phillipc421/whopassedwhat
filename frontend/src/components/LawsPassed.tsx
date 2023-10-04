@@ -1,18 +1,20 @@
 import Link from "next/link";
 import ScrollTop from "./ScrollTop";
-import { PresidentLawResponse } from "@/app/president/[president]/page";
+import { PresidentLaw } from "@/app/president/[president]/page";
+import { CongressLaw, CongressLawResponse } from "./CongressSelector";
 import styles from "./LawsPassed.module.css";
 
-export default function LawsPassed({
+export default function LawsPassed<
+  T extends { [key: string]: PresidentLaw | CongressLaw }
+>({
   president,
   laws,
   congress,
 }: {
   president: string;
-  laws: PresidentLawResponse;
+  laws: T;
   congress: string;
 }) {
-  console.log(laws);
   return (
     <section className={styles["container"]}>
       <ScrollTop></ScrollTop>
@@ -24,15 +26,20 @@ export default function LawsPassed({
           <p>Congress: {law.congress}</p>
           <p>President at time of passing: {law.president.name}</p>
           <p>
-            Passed on: <time dateTime={law.passedDate}>{law.passedDate}</time>
+            Passed on:{" "}
+            <time dateTime={law.passedDate}>
+              {new Date(law.passedDate).toLocaleDateString()}
+            </time>
           </p>
           <div className={styles["law_links"]}>
             <Link href={law.billLink} target="_blank">
               Bill Link
             </Link>
-            <Link href={law.textLink} target="_blank">
-              Law Text Link
-            </Link>
+            {law.textLink && (
+              <Link href={law.textLink} target="_blank">
+                Law Text Link
+              </Link>
+            )}
           </div>
         </article>
       ))}

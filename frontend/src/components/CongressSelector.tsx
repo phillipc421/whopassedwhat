@@ -1,6 +1,5 @@
 "use client";
 import { CONGRESSES } from "@/constants/congresses";
-import { getLaws } from "@/fetchers";
 import { FormEventHandler } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./CongressSelector.module.css";
@@ -33,7 +32,8 @@ export default function CongressSelector() {
 }
 
 export interface CongressLawResponse {
-  [key: string]: CongressLaw;
+  laws: { [key: string]: CongressLaw };
+  total: number;
 }
 
 export interface CongressLaw {

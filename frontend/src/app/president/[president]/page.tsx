@@ -1,31 +1,19 @@
 import LawsPassed from "@/components/LawsPassed";
-import Link from "next/link";
-import Pagination from "@/components/Pagination";
-const PAGINATION_LIMIT = 10;
+
+// FOR PAGINATION IN FUTURE
 // always plus 1 as last key must be used as the next start point to avoid duplicate listings
 
 export default async function PresidentPage({
   params,
-  searchParams,
 }: {
   params: { president: string };
-  searchParams: { pStart: string; prev: string };
 }) {
   const lawsResponse = await fetch(
-    `https://whopassedwhat-default-rtdb.firebaseio.com/v2/presidents/${decodeURIComponent(
+    `https://whopassedwhat-default-rtdb.firebaseio.com/v3/presidents/${decodeURIComponent(
       params.president
-    )}.json?orderBy="$key"&limitTo${searchParams.prev ? "Last" : "First"}=${
-      PAGINATION_LIMIT + 1
-    }${
-      searchParams.pStart
-        ? `&${searchParams.prev ? "end" : "start"}At="${searchParams.pStart}"`
-        : ""
-    }`
+    )}.json`
   );
   const lawsData = (await lawsResponse.json()) as PresidentLawResponse;
-  const lawKeys = Object.keys(lawsData);
-  const firstKey = lawKeys[0];
-  const lastKey = lawKeys[lawKeys.length - 1];
   return (
     <main>
       <h1>
@@ -34,23 +22,20 @@ export default async function PresidentPage({
           .split("-")
           .map((word) => word[0].toUpperCase() + word.slice(1))
           .join(" ")}
-        's Administration.
+        's Administration. ({lawsData.total})
       </h1>
       <LawsPassed
         president={decodeURIComponent(params.president)}
-        laws={lawsData}
+        laws={lawsData.laws}
         congress=""
       ></LawsPassed>
-      <Pagination
-        prevLink={`/president/${params.president}?pStart=${firstKey}&prev=1`}
-        nextLink={`/president/${params.president}?pStart=${lastKey}`}
-      ></Pagination>
     </main>
   );
 }
 
 export interface PresidentLawResponse {
-  [key: string]: PresidentLaw;
+  laws: { [key: string]: PresidentLaw };
+  total: number;
 }
 
 export interface PresidentLaw {
