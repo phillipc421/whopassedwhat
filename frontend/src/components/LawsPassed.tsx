@@ -1,42 +1,48 @@
-"use client";
-import { getLaws } from "@/fetchers";
-import { useEffect, useState, useMemo } from "react";
-import { LawsReponse, LawsState } from "@/fetchers";
-import { PRESIDENTS_CONGRESS } from "@/constants/presidentCongress";
 import Link from "next/link";
-import LawLinks from "./LawLinks";
-import CongressesTab from "./CongressesTab";
-import LawsList from "./LawsList";
-import styles from "./LawsPassed.module.css";
 import ScrollTop from "./ScrollTop";
+import { PresidentLaw } from "@/app/president/[president]/page";
+import { CongressLaw, CongressLawResponse } from "./CongressSelector";
+import styles from "./LawsPassed.module.css";
 
-export default function LawsPassed({ president }: { president: string }) {
-  const [currentCongress, setCurrentCongress] = useState<number>(0);
-  const [laws, setLaws] = useState<LawsState[] | null>(null);
-  const congresses = PRESIDENTS_CONGRESS[president];
-
-  useEffect(() => {
-    const lawRequests = congresses.congresses.map(({ name }) => getLaws(name));
-    Promise.all(lawRequests)
-      .then((response) => setLaws(response))
-      .catch((e) => console.log(e));
-  }, [congresses.congresses]);
-
-  const selected = laws ? laws[currentCongress] : null;
-
+export default function LawsPassed<
+  T extends { [key: string]: PresidentLaw | CongressLaw }
+>({
+  president,
+  laws,
+  congress,
+}: {
+  president: string;
+  laws: T;
+  congress: string;
+}) {
   return (
-    laws &&
-    selected && (
-      <section className={styles["container"]}>
-        <ScrollTop></ScrollTop>
-        <h1>Laws Passed During {president}&apos;s Administration</h1>
-        <CongressesTab
-          congresses={laws}
-          setCurrentCongress={setCurrentCongress}
-          currentCongress={currentCongress}
-        ></CongressesTab>
-        <LawsList law={selected}></LawsList>
-      </section>
-    )
+    <section className={styles["container"]}>
+      <ScrollTop></ScrollTop>
+      {Object.entries(laws).map(([id, law]) => (
+        <article key={id} className={styles["law"]}>
+          <p>Bill Title: {law.billTitle}</p>
+          <p>Bill Number: {law.billNumber}</p>
+          <p>Public Law Number: {law.publicLawNumber}</p>
+          <p>Congress: {law.congress}</p>
+          <p>President at time of passing: {law.president.name}</p>
+          <p>
+            Passed on:{" "}
+            <time dateTime={law.passedDate}>
+              {new Date(law.passedDate).toLocaleDateString()}
+            </time>
+          </p>
+          <div className={styles["law_links"]}>
+            <Link href={law.billLink} target="_blank">
+              Bill Link
+            </Link>
+            {law.textLink && (
+              <Link href={law.textLink} target="_blank">
+                Law Text Link
+              </Link>
+            )}
+          </div>
+        </article>
+      ))}
+    </section>
   );
 }

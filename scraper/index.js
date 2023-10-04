@@ -10,6 +10,8 @@ const CONGRESSES_SELECTOR = "#congresses > option";
 // init db
 const db = getDatabase(app);
 
+const DB_VERSION_PREFIX = "v3";
+
 // scrape current page (latest congress)
 const pageScrape = async (browser, congressUrl, congress) => {
   const page = await browser.newPage();
@@ -52,8 +54,13 @@ const pageScrape = async (browser, congressUrl, congress) => {
           index += 1;
 
           const dateColumn = columns[index];
-          const date = dateColumn.innerText;
-          law.passedDate = date;
+          // date format on site = mm/dd/yyyy -> convert to yyyy-mm-dd
+          const dateValues = dateColumn.innerText
+            .split("/")
+            .map((v) => parseInt(v));
+          const [month, day, year] = dateValues;
+          const dateObj = new Date(year, month - 1, day);
+          law.passedDate = dateObj.toISOString();
 
           law.congress = congress;
 
@@ -61,7 +68,9 @@ const pageScrape = async (browser, congressUrl, congress) => {
         },
         congress
       );
-      lawData.president = linkPresident(lawData.passedDate);
+      const president = linkPresident(lawData.passedDate);
+      if (!president) console.log(lawData);
+      lawData.president = president;
 
       laws.push(lawData);
     } catch (e) {
@@ -75,37 +84,66 @@ const pageScrape = async (browser, congressUrl, congress) => {
 
 const saveToDb = (data, db) => {
   // laws ref
-  const lawsRef = db.ref(`v2/laws`);
+  const lawsRef = db.ref(`${DB_VERSION_PREFIX}/laws`);
+  const lawsRefTotalsRef = lawsRef.child("total");
   data.forEach((law) => {
-    // president ref
-    const presidentRef = db.ref(`v2/presidents/${law.president}`);
-    const newLawPresidentRef = presidentRef.push();
-    const presidentId = newLawPresidentRef.key;
-    newLawPresidentRef.set({ ...law, id: presidentId });
-    // congress ref
-    const congressRef = db.ref(`v2/congresses/${law.congress}`);
-    const newLawCongressesRef = congressRef.push();
-    const congressId = newLawCongressesRef.key;
-    newLawCongressesRef.set({ ...law, id: congressId });
-
-    const newLawRef = lawsRef.push();
+    // law entry
+    const lawYearRef = lawsRef.child(law.passedDate.split("-")[0]);
+    const lawYearLawsRef = lawYearRef.child("laws");
+    const lawYearTotalsRef = lawYearRef.child("total");
+    const newLawRef = lawYearLawsRef.push();
     const lawId = newLawRef.key;
-    newLawRef.set({ ...law, id: lawId });
+    const lawObj = { ...law, id: lawId };
+    lawYearTotalsRef.transaction((currentValue) => {
+      return (currentValue || 0) + 1;
+    });
+    lawsRefTotalsRef.transaction((currentValue) => {
+      return (currentValue || 0) + 1;
+    });
+    newLawRef.set(lawObj);
+
+    // president ref
+    const presidentRef = db.ref(
+      `${DB_VERSION_PREFIX}/presidents/${law.president.slug}`
+    );
+    const presidentRefLawsRef = presidentRef.child(`laws/${lawId}`);
+    const presidentRefTotalsRef = presidentRef.child("total");
+    presidentRefLawsRef.set({ ...law, id: lawId });
+    presidentRefTotalsRef.transaction((currentValue) => {
+      return (currentValue || 0) + 1;
+    });
+
+    // congress ref
+    const congressRef = db.ref(
+      `${DB_VERSION_PREFIX}/congresses/${law.congress}`
+    );
+    const congressRefLawsRef = congressRef.child(`laws/${lawId}`);
+    const congressRefTotalsRef = congressRef.child("total");
+    congressRefLawsRef.set({ ...law, id: lawId });
+    congressRefTotalsRef.transaction((currentValue) => {
+      return (currentValue || 0) + 1;
+    });
+
+    // can we get a total during write?
   });
 };
 
 const scrapeAndWriteDb = async (link, browser, db) => {
   // link format -> 118th-congress
-  const lawData = await pageScrape(
-    browser,
-    LAWS_URL + link,
-    link.split("-")[0]
-  );
-  // rework to have law title and bill title at root level
-  saveToDb(lawData, db);
+  try {
+    const lawDataPerCongress = await pageScrape(
+      browser,
+      LAWS_URL + link,
+      link.split("-")[0]
+    );
+    // rework to have law title and bill title at root level
+    saveToDb(lawDataPerCongress, db);
+  } catch (e) {
+    console.log("caught here", e);
+  }
 };
 
-const batchRun = async (batchSize, startIndex, links, browser, db) => {
+const batchRun = (batchSize, startIndex, links, browser, db) => {
   const batch = [];
   for (
     let i = startIndex;
@@ -116,7 +154,7 @@ const batchRun = async (batchSize, startIndex, links, browser, db) => {
     batch.push(scrapeAndWriteDb(link, browser, db));
   }
 
-  return Promise.allSettled(batch);
+  return Promise.all(batch);
 };
 
 const scrape = async () => {
@@ -132,12 +170,16 @@ const scrape = async () => {
   const links = options.map((option) => `${option.split(" ")[0]}-congress`);
 
   for (let i = 0; i < links.length; i += 5) {
-    await batchRun(5, i, links, browser, db);
-    console.log(
-      "batch done",
-      i,
-      i + 5 > links.length ? links.length - 1 : i + 5
-    );
+    try {
+      await batchRun(5, i, links, browser, db);
+      console.log(
+        "batch done",
+        i,
+        i + 5 > links.length ? links.length - 1 : i + 5
+      );
+    } catch (e) {
+      console.log("caught in for loop");
+    }
   }
 
   await browser.close();

@@ -1,3 +1,5 @@
+const NEXT_END_DATE = 2025;
+
 export const PRESIDENTS = [
   {
     name: "HARRY S. TRUMAN",
@@ -60,8 +62,9 @@ export const PRESIDENTS = [
   const [start, end] = term.split("-");
   return {
     name,
+    slug: name.toLocaleLowerCase().replace(/\./g, "").replace(/ /g, "-"),
     start: new Date(`01/20/${start}`).getTime(),
-    end: new Date(`01/20/${end}`)?.getTime() || Date.now(),
+    end: new Date(`01/20/${end || NEXT_END_DATE}`).getTime(),
   };
 });
 
@@ -70,7 +73,7 @@ export const linkPresident = (dateString) => {
   for (let i = 0; i < PRESIDENTS.length; i++) {
     const president = PRESIDENTS[i];
     if (lawPassDate >= president.start && lawPassDate <= president.end) {
-      return president.name;
+      return { name: president.name, slug: president.slug };
     }
   }
 };

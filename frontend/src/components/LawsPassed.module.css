@@ -1,4 +1,14 @@
-.container {
+.law {
   padding: 1rem;
-  position: relative;
+  border: 1px solid lightgray;
+  margin-bottom: 0.5rem;
+}
+
+.law * {
+  margin: 0;
+}
+
+.law_links {
+  display: flex;
+  gap: 0.5rem;
 }
