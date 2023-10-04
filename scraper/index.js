@@ -6,11 +6,12 @@ import { linkPresident } from "./presidents.js";
 // will default to current congress
 const LAWS_URL = "https://www.congress.gov/public-laws/";
 const CONGRESSES_SELECTOR = "#congresses > option";
+import { PRESIDENTS } from "./presidents.js";
 
 // init db
 const db = getDatabase(app);
 
-const DB_VERSION_PREFIX = "v3"
+const DB_VERSION_PREFIX = "v3";
 
 // scrape current page (latest congress)
 const pageScrape = async (browser, congressUrl, congress) => {
@@ -55,7 +56,9 @@ const pageScrape = async (browser, congressUrl, congress) => {
 
           const dateColumn = columns[index];
           // date format on site = mm/dd/yyyy -> convert to yyyy-mm-dd
-          const dateValues = dateColumn.innerText.split("/").map(v => parseInt(v));
+          const dateValues = dateColumn.innerText
+            .split("/")
+            .map((v) => parseInt(v));
           const [year, month, day] = dateValues;
           const dateObj = new Date(year, month - 1, day);
           law.passedDate = dateObj.toISOString();
@@ -66,7 +69,9 @@ const pageScrape = async (browser, congressUrl, congress) => {
         },
         congress
       );
-      lawData.president = linkPresident(lawData.passedDate);
+      const president = linkPresident(lawData.passedDate);
+      if (!president) console.log(lawData);
+      lawData.president = president;
 
       laws.push(lawData);
     } catch (e) {
@@ -83,34 +88,49 @@ const saveToDb = (data, db) => {
   const lawsRef = db.ref(`${DB_VERSION_PREFIX}/laws`);
   data.forEach((law) => {
     // president ref
-    const presidentRef = db.ref(`${DB_VERSION_PREFIX}/presidents/${law.president}`);
+    const presidentRef = db.ref(
+      `${DB_VERSION_PREFIX}/presidents/${law.president}`
+    );
     const newLawPresidentRef = presidentRef.push();
     const presidentId = newLawPresidentRef.key;
     newLawPresidentRef.set({ ...law, id: presidentId });
     // congress ref
-    const congressRef = db.ref(`${DB_VERSION_PREFIX}/congresses/${law.congress}`);
+    const congressRef = db.ref(
+      `${DB_VERSION_PREFIX}/congresses/${law.congress}`
+    );
     const newLawCongressesRef = congressRef.push();
     const congressId = newLawCongressesRef.key;
     newLawCongressesRef.set({ ...law, id: congressId });
 
     const newLawRef = lawsRef.push();
     const lawId = newLawRef.key;
-    newLawRef.set({ ...law, id: lawId });
+    const lawObj = { ...law, id: lawId };
+    newLawRef.set(lawObj);
+
+    const newPresRef = presidentRef.child(`${law.president.slug}/${lawId}`);
+    newPresRef.set(lawObj);
+
+    const newCongressRef = congressRef.child(`${law.congress}/${lawId}`);
+    newCongressRef.set(lawObj);
   });
 };
 
 const scrapeAndWriteDb = async (link, browser, db) => {
   // link format -> 118th-congress
-  const lawData = await pageScrape(
-    browser,
-    LAWS_URL + link,
-    link.split("-")[0]
-  );
-  // rework to have law title and bill title at root level
-  saveToDb(lawData, db);
+  try {
+    const lawData = await pageScrape(
+      browser,
+      LAWS_URL + link,
+      link.split("-")[0]
+    );
+    // rework to have law title and bill title at root level
+    saveToDb(lawData, db);
+  } catch (e) {
+    console.log("caught here", e);
+  }
 };
 
-const batchRun = async (batchSize, startIndex, links, browser, db) => {
+const batchRun = (batchSize, startIndex, links, browser, db) => {
   const batch = [];
   for (
     let i = startIndex;
@@ -121,7 +141,7 @@ const batchRun = async (batchSize, startIndex, links, browser, db) => {
     batch.push(scrapeAndWriteDb(link, browser, db));
   }
 
-  return Promise.allSettled(batch);
+  return Promise.all(batch);
 };
 
 const scrape = async () => {
@@ -137,12 +157,16 @@ const scrape = async () => {
   const links = options.map((option) => `${option.split(" ")[0]}-congress`);
 
   for (let i = 0; i < links.length; i += 5) {
-    await batchRun(5, i, links, browser, db);
-    console.log(
-      "batch done",
-      i,
-      i + 5 > links.length ? links.length - 1 : i + 5
-    );
+    try {
+      await batchRun(5, i, links, browser, db);
+      console.log(
+        "batch done",
+        i,
+        i + 5 > links.length ? links.length - 1 : i + 5
+      );
+    } catch (e) {
+      console.log("caught in for loop");
+    }
   }
 
   await browser.close();
@@ -150,3 +174,35 @@ const scrape = async () => {
 };
 
 scrape();
+
+const testRefs = () => {
+  const ass = [
+    "ass",
+    "butt",
+    "ass",
+    "phillip",
+    "phillip",
+    "ass",
+    "booty",
+    "pipe",
+    "ass",
+    "claire",
+  ];
+  // const presidentRef = db.ref("v2/presidents");
+  for (let i = 0; i < 10; i++) {
+    const yeetRef = presidentRef.child(ass[i]);
+    const yeetrefA = yeetRef.push();
+    const yeetrefid = yeetrefA.key;
+    yeetrefA.set({ val: "hi" });
+  }
+};
+
+// testRefs();
+// testRefs();
+// testRefs();
+
+// console.log(PRESIDENTS[PRESIDENTS.length - 1]);
+
+// PRESIDENTS.forEach((pres) => {
+//   console.log(pres);
+// });
